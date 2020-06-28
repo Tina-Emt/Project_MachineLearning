@@ -9,7 +9,7 @@ Tina KhezrEsmaeilzadeh
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import numpy as np
-#%%
+#%% Splitting Data into two parts
 
 tmp = pd.read_csv('Project_Intro2ML_dataset.csv')
 data = tmp.iloc[:3299]
@@ -55,7 +55,7 @@ plt.ylabel('Close Values')
 plt.show()
 
 #%% Be
-
+# importing packages
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from pandas.api.types import is_string_dtype, is_numeric_dtype, is_categorical_dtype
 from sklearn.ensemble import forest
@@ -489,20 +489,20 @@ add_datepart(Shuffled_Data, 'Date')
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 
-AllDataSeries = Shuffled_Data.Close
+AllLabelSeries = Shuffled_Data.Close
 #%%
-AllData = []
-
-for i in range(AllDataSeries.shape[0]):
-    AllData.append(AllDataSeries[i])
-
-
-AllLabelSeries = Shuffled_Data['Elapsed']
-
 AllLabel = []
 
 for i in range(AllLabelSeries.shape[0]):
     AllLabel.append(AllLabelSeries[i])
+
+
+AllDataSeries = Shuffled_Data['Elapsed']
+
+AllData = []
+
+for i in range(AllDataSeries.shape[0]):
+    AllData.append(AllDataSeries[i])
 
 
 x_train, x_test, y_train, y_test = train_test_split(AllData, AllLabel, test_size=0.2, random_state=0)
@@ -525,15 +525,20 @@ linear_regression = LinearRegression()
 linear_regression.fit(x_train, y_train)
 
 #%%
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+from matplotlib import pyplot as plt
 
 y_predicted = linear_regression.predict(x_test)
+
+LinearRegressionRMSE = sqrt(mean_squared_error(y_test, y_predicted))
 
 print("The intercept is",linear_regression.intercept_)
 print("The Coefficients are ", linear_regression.coef_.tolist())
 
 
-print("The Mean Squared Error for Train Data is ", linear_regression.score(x_train, y_train ))
-print("The Mean Squared Error for Test data is ", linear_regression.score(x_test, y_test) )
+print("The ُScore for Train Data is ", linear_regression.score(x_train, y_train ))
+print("The Score for Test data is ", linear_regression.score(x_test, y_test) )
 
 
 #%%
@@ -561,19 +566,27 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 
-
+'''
 scaler = StandardScaler()
 scaler.fit(x_train)
 
 x_train = scaler.transform(x_train)
 x_test = scaler.transform(x_test)
+'''
+
 y_train = y_train.ravel()
+y_train = y_train.astype(int)
+
 
 
 classifier = KNeighborsClassifier(n_neighbors = 3)
 classifier.fit(x_train, y_train)
 y_pred = classifier.predict(x_test)
 ThreeNearestNeighboursRMSE = sqrt(mean_squared_error(y_test, y_pred))
+
+
+
+
 
 plt.plot(x_test, y_test,'o', label = 'Real Values')
 plt.plot(x_test, y_pred, 'o', label = 'Predicted Values')
@@ -583,6 +596,9 @@ plt.xlabel('Time')
 plt.ylabel('Close Values')
 
 plt.show()
+
+
+
 
 #%%
 classifier = KNeighborsClassifier(n_neighbors = 5)
@@ -613,11 +629,6 @@ plt.xlabel('Time')
 plt.ylabel('Close Values')
 
 plt.show()
-
-#%%
-
-print(confusion_matrix(y_test, y_pred))
-print(classification_report(y_test, y_pred))
 
 
 #%% Te
@@ -662,7 +673,7 @@ def arimamodel(timeseries):
 def plotarima(n_periods, timeseries, automodel):
     # Forecast
     fc, confint = automodel.predict(n_periods=n_periods, 
-                                    return_conf_int=True)
+                                    return_conf_int=True, error_action = "ignore")
     # Weekly index
     fc_ind = pd.date_range(timeseries.index[timeseries.shape[0]-1], 
                            periods=n_periods, freq="W")
@@ -710,37 +721,243 @@ from sklearn.metrics import mean_squared_error
 rms = sqrt(mean_squared_error(valid,forecast))
 print(rms)
 
+#%% Se
+
+
+# Importing datasets
+import pandas as pd
+import numpy as np
+from fbprophet import Prophet
+import math
+
+# Read train and test
+tmp = pd.read_csv('Project_Intro2ML_dataset.csv')
+data = tmp.iloc[:3299]
+data = data.drop(['Open', 'High', 'Low', 'Last', 'Total Trade Quantity', 'Turnover (Lacs)' ], axis = 1)
+data = data.rename(columns={'Date':'ds', 'Close':'y'})
+
+data['y'] = np.log(data['y'])
+data.set_index('ds').y.plot().get_figure()
 #%%
+import pandas as pd 
+from fbprophet import Prophet
+from sklearn.metrics import mean_squared_error
+from math import sqrt
+
+TrainData = data[:math.floor(data.shape[0]*0.8)]
+TestData = data[math.floor(data.shape[0]*0.8) + 1 :]
+
+model = Prophet()
+model.fit(TrainData);
+
+future = model.make_future_dataframe(periods = 365, freq = 'm')
+forecast = model.predict(future)
+forecast = forecast[:659]
+#%%
+ProphetRMSE = sqrt(mean_squared_error(TestData['y'],forecast['yhat']))
+
+from matplotlib import pyplot as plt
+forecast['yhat_rescaled'] = np.exp(forecast['yhat'])
+data['y_rescaled'] = np.exp(data['y'])
+RealValues = data['y_rescaled'][math.floor(data.shape[0]*0.8) + 1 :]
+PredictedValues = forecast['yhat_rescaled']
 
 
+Valid = []
+Predicted = []
+for i in range(len(RealValues)):
+    Valid.append(RealValues.iloc[i])
+    
+for i in range(len(forecast['yhat_rescaled'])):
+    Predicted.append(PredictedValues.iloc[i])
+
+    
+plt.plot(Valid, label = 'Real Values')
+plt.plot(Predicted, label = 'Predicted Values')
+plt.legend()
+plt.title('Prophet Method')
+plt.xlabel('Indices')
+plt.ylabel('Close Values')
+
+plt.show()
+
+#%% Jim
+# Simple Moving Average
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+import numpy as np
+
+tmp = pd.read_csv('Project_Intro2ML_dataset.csv')
+data = tmp.iloc[:3299]
 
 
+SMA = []
+
+n = 50
 
 
-
-
-
-
-
-
-
-
-
-
-
+for i in range(n):
+    SMA.append(0)
+for i in range(n,data.shape[0]):
+    SMA.append(np.mean(data['Close'].iloc[i - n : i - 1]))
 
 
 #%%
+# Exponential Moving Average
+
+
+
+def EMAProducer(data, n):
+    WeightingMultipliers = 2/(n + 1)
+    EMA = np.zeros((data.shape[0], 1))
+    for i in range(1, data.shape[0]):
+        EMA[i] = EMA[i-1] - WeightingMultipliers*EMA[i - 1] + WeightingMultipliers*data['Close'] [i]
+             
+    return EMA
+            
+EMA = EMAProducer(data, 50)            
+
+#%%                
+                     
+# Balance of Power Oscillator (BOP)          
+BOP = []
+for i in range(data.shape[0]):
+    BOP.append((data['Close'][i] - data['Open'][i])/(data['High'][i] - data['Low'][i]))
+#%%
+# Momentum
+n = 50
+Momentum = []
+for i in range(n):
+    Momentum.append(data['Close'][i])
+
+for i in range(n , data.shape[0])   :
+    Momentum.append(data['Close'][i] - data['Close'][i - n])
+#%%
+# Williams R%
+n = 50;
+
+Williams = []
+        
+for i in range(data.shape[0]):
+    HighestHn = 0
+    LowestLn = 20000
+    if i - n >= 0:
+         for j in range(i - n, i):
+             if (data['High'][j]) > HighestHn:
+                 HighestHn = data['High'][j]
+             if (data['Low'][j]) <  LowestLn:
+                 LowestLn = data['Low'][j]  
+    if i - n < 0:
+        for j in range (i):
+             if (data['High'][j]) > HighestHn:
+                 HighestHn = data['High'][j]
+             if (data['Low'][j]) <  LowestLn:
+                 LowestLn = data['Low'][j]  
+        
+    Williams.append( (HighestHn  - data['Close'][i])/(HighestHn - LowestLn))
+#%%
+#Stochastic K%
+n = 50;
+
+Stochastic = []
+        
+for i in range(data.shape[0]):
+    HighestHn = 0
+    LowestLn = 20000
+    if i - n >= 0:
+         for j in range(i - n, i):
+             if (data['High'][j]) > HighestHn:
+                 HighestHn = data['High'][j]
+             if (data['Low'][j]) <  LowestLn:
+                 LowestLn = data['Low'][j]  
+    if i - n < 0:
+        for j in range (i):
+             if (data['High'][j]) > HighestHn:
+                 HighestHn = data['High'][j]
+             if (data['Low'][j]) <  LowestLn:
+                 LowestLn = data['Low'][j]  
+        
+    Stochastic.append( (data['Close'][i] - HighestHn )*100/(HighestHn - LowestLn))
+#%%
+#Stochastic D%
+n = 50;
+
+StochasticD = []
+StochasticD.append(Stochastic[0]/3)
+StochasticD.append( (Stochastic[0] + Stochastic[1])/3 )
+for i in range(2,data.shape[0]):
+    StochasticD.append((Stochastic[i] + Stochastic[ i-1 ] + Stochastic[ i-2 ])/3)
+
+#%%
+# StochasticFast D%
+n = 50;
+
+StochasticFastD = []
+StochasticFastD.append(StochasticD[0]/3)
+StochasticFastD.append( (StochasticD[0] + StochasticD[1])/3 )
+for i in range(2,data.shape[0]):
+    StochasticFastD.append((StochasticD[i] + StochasticD[ i-1 ] + StochasticD[ i-2 ])/3)
+
+#%%
+# Advance/Decline (A/D) Line
+ADLine = []
+for i in range(data.shape[0]):
+    ADLine.append(((data['Close'][i] - data['Low'][i])-(data['High'][i] - data['Close'][i]))/(data['High'][i] - data['Low'][i])  )
+
+
+#%%
+# Rate Of Change
+
+n = 50
+ROC = []
+for i in range(n):
+     ROC.append(0)
+for i in range(n, data.shape[0]):
+    ROC.append((data['Close'][i]- data['Close'][i - n])/data['Close'][i - n])
+      
+
+    
+
+#%% Che
+
+tmp = pd.read_csv('Project_Intro2ML_dataset.csv')
+data = tmp.iloc[:3299]
+
+testIndex = []
+
+for i in range(data.shape[0]):
+    if i <= data.shape[0]*0.8:
+        testIndex.append(True)
+    else:
+        testIndex.append(False)
+
+testIndex = np.array(testIndex)
+
+TrainData = data[testIndex]
+TestData = data[~testIndex]
+
+train = TrainData['Close']
+valid = TestData['Close']
+
 
 trainLabel = []
+trainLabel.append(0)
 for i in range(1, train.shape[0]):
-    if( train.iloc[i] > train.iloc[ i - 1] ):
+    if train.iloc[i] > train.iloc[ i - 1] :
         trainLabel.append(1)
     else:
         trainLabel.append(0)
 
         
 validLabel = []
+if valid.iloc[0] > train.iloc[ train.shape[0] - 1]:
+    validLabel.append(1)
+else:
+    validLabel.append(0)
+    
+    
+    
 for i in range(1, valid.shape[0]):
     if( valid.iloc[i] > valid.iloc[ i - 1 ] ):
         validLabel.append(1)
@@ -748,40 +965,49 @@ for i in range(1, valid.shape[0]):
         validLabel.append(0)        
         
         
-trainDataClassification = train.drop(train.index[0])           
-validDataClassification = valid.drop(valid.index[0])  
-
-finalTrainDataClassification = []
-finalValidDataClassification = []
-
-for i in range(trainDataClassification.shape[0]):
-    finalTrainDataClassification.append(trainDataClassification.iloc[i])
-    
-for i in range(validDataClassification.shape[0]):
-    finalValidDataClassification.append(validDataClassification.iloc[i])
-    
-finalTrainDataClassification = np.array(finalTrainDataClassification)   
-finalValidDataClassification = np.array(finalValidDataClassification)    
 trainLabel = np.array(trainLabel)  
 validLabel = np.array(validLabel)
 
+#%%
+# Define a dictionary containing Andicators data 
+dataf = {'ROC': ROC, 
+        'ADLine': ADLine, 
+        'StochasticFastD': StochasticFastD,
+        'StochasticD' : StochasticD,
+        'Stochastic':Stochastic,
+        
+        
+        } 
+  
+# Convert the dictionary into DataFrame 
+df = pd.DataFrame(dataf) 
+  
+df['Williams'] = Williams
+df['Momentum']  = Momentum
+df['BOP'] = BOP
+df['EMA'] = EMA
+df['SMA'] = SMA
+
+# seperating train and valid parts
+finalTrainDataClassification = df[testIndex]
+finalValidDataClassification = df[~testIndex]
 
 #%%
 
 import sklearn.svm as svm
 
-finalTrainDataClassification = finalTrainDataClassification.reshape(-1, 1)
-finalValidDataClassification = finalValidDataClassification.reshape(-1, 1)
+#finalTrainDataClassification = finalTrainDataClassification.reshape(-1, 1)
+#finalValidDataClassification = finalValidDataClassification.reshape(-1, 1)
 
 trainLabel = trainLabel.reshape(-1, 1)
 validLabel = validLabel.reshape(-1, 1)
 
 MyClassifier=svm.LinearSVC()
 MyClassifier.fit(finalTrainDataClassification, trainLabel)
-Pr=MyClassifier.predict(finalValidDataClassification)
+PredictedLabelSVM = MyClassifier.predict(finalValidDataClassification)
 
-print('In SVM the accuracy is :', MyClassifier.score(finalValidDataClassification, validLabel)
-     )
+SVMMSE = sqrt(mean_squared_error(validLabel, PredictedLabelSVM))
+
 
 
 
@@ -799,45 +1025,132 @@ finalValidDataClassification = scaler.transform(finalValidDataClassification)
 trainLabel = trainLabel.ravel()
 
 
-classifier = KNeighborsClassifier(n_neighbors = 3)
+classifier = KNeighborsClassifier(n_neighbors = 7)
 classifier.fit(finalTrainDataClassification, trainLabel)
-y_pred = classifier.predict(finalValidDataClassification)
-ThreeNearestNeighboursRMSE = sqrt(mean_squared_error(validLabel, y_pred))
+PredictedLabelNN = classifier.predict(finalValidDataClassification)
+NearestNeighboursRMSE = sqrt(mean_squared_error(validLabel, PredictedLabelNN ))
 
 plt.plot(finalValidDataClassification, validLabel,'o', label = 'Real Values')
-plt.plot(finalValidDataClassification, y_pred, 'o', label = 'Predicted Values')
+plt.plot(finalValidDataClassification, PredictedLabelNN, 'o', label = 'Predicted Values')
 plt.legend()
-plt.title('3 Nearest Neighbours')
+plt.title('Nearest Neighbours')
 plt.xlabel('Time')
 plt.ylabel('Close Values')
 
 plt.show()
 
 #%%
-Res=100
-xg=np.linspace(TrData.f1.min()-1,TrData.f1.max()+1,Res)
-yg=np.linspace(TrData.f2.min()-1,TrData.f2.max()+1,Res)
 
-xx,yy=np.meshgrid(xg,yg)
-Pts=np.c_[xx.ravel(),yy.ravel()]#in baraye concatinate krdn ast.
-Prs=MyClassifier.predict(Pts)
-Prs=Prs.reshape(xx.shape)
+from sklearn import tree
+decisionTree = tree.DecisionTreeClassifier()
+decisionTree = decisionTree.fit(finalTrainDataClassification, trainLabel)
+
+PredictedLabelDecisionTree = decisionTree.predict(finalValidDataClassification)
+DecisionTreeRMSE = sqrt(mean_squared_error(validLabel, PredictedLabelDecisionTree ))
+
+plt.plot(finalValidDataClassification, validLabel,'o', label = 'Real Values')
+plt.plot(finalValidDataClassification, PredictedLabelDecisionTree, 'o', label = 'Predicted Values')
+plt.legend()
+plt.title('Decision Tree')
+plt.xlabel('Time')
+plt.ylabel('Close Values')
+
+plt.show()
 
 #%%
 
-mp.figure(figsize=(7,7))
-mp.contourf(xx, yy, Prs , cmap=mp.cm.coolwarm ,levels=1)
-mp.scatter(TrData.f1,TrData.f2,s=10, c=TrLabel ,cmap='bone')
-#mp.scatter(TrData.f1[TrMissed],TrData.f2[TrMissed], s=40 , c='none' , edgecolors='r')
-mp.scatter(TsData.f1,TsData.f2, s=20 ,c=TsLabel, cmap=mp.cm.Greens, marker='v')
-
-mp.xlabel('f1')
-mp.ylabel('f2')
+VotingResult = []
+for i in range(len(finalValidDataClassification)):
+    if( PredictedLabelSVM[i] + PredictedLabelNN[i] + PredictedLabelDecisionTree[i] < 1.5):
+        VotingResult.append(0)
+    else:
+        VotingResult.append(1)
 
 
 
+VotingResultRMSE = sqrt(mean_squared_error(validLabel, VotingResult ))
+#%%
+from sklearn.decomposition import PCA
+pca = PCA(n_components=6)
+pca.fit(finalTrainDataClassification)
+
+print(pca.components_)
+print(pca.explained_variance_)
+
+finalTrainDataClassification_pca = pca.transform(finalTrainDataClassification)
+finalValidDataClassification_pca = pca.transform(finalValidDataClassification)
+
+
+
+#%%
+
+import sklearn.svm as svm
+
+#finalTrainDataClassification = finalTrainDataClassification.reshape(-1, 1)
+#finalValidDataClassification = finalValidDataClassification.reshape(-1, 1)
+
+trainLabel = trainLabel.reshape(-1, 1)
+validLabel = validLabel.reshape(-1, 1)
+trainLabel = trainLabel.ravel()
+vaildLabel = validLabel.ravel()
+
+MyClassifier=svm.LinearSVC()
+MyClassifier.fit(finalTrainDataClassification_pca, trainLabel)
+PredictedLabelSVM = MyClassifier.predict(finalValidDataClassification_pca)
+
+SVMMSE = sqrt(mean_squared_error(validLabel, PredictedLabelSVM))
 
 
 
 
+#%%
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report, confusion_matrix
 
+
+
+classifier = KNeighborsClassifier(n_neighbors = 7)
+classifier.fit(finalTrainDataClassification_pca, trainLabel)
+PredictedLabelNN = classifier.predict(finalValidDataClassification_pca)
+NearestNeighboursRMSE = sqrt(mean_squared_error(validLabel, PredictedLabelNN ))
+
+plt.plot(finalValidDataClassification_pca, validLabel,'o', label = 'Real Values')
+plt.plot(finalValidDataClassification_pca, PredictedLabelNN, 'o', label = 'Predicted Values')
+plt.legend()
+plt.title('Nearest Neighbours')
+plt.xlabel('Time')
+plt.ylabel('Close Values')
+
+plt.show()
+
+#%%
+
+from sklearn import tree
+decisionTree = tree.DecisionTreeClassifier()
+decisionTree = decisionTree.fit(finalTrainDataClassification_pca, trainLabel)
+
+PredictedLabelDecisionTree = decisionTree.predict(finalValidDataClassification_pca)
+DecisionTreeRMSE = sqrt(mean_squared_error(validLabel, PredictedLabelDecisionTree ))
+
+plt.plot(finalValidDataClassification_pca, validLabel,'o', label = 'Real Values')
+plt.plot(finalValidDataClassification_pca, PredictedLabelDecisionTree, 'o', label = 'Predicted Values')
+plt.legend()
+plt.title('Decision Tree')
+plt.xlabel('Time')
+plt.ylabel('Close Values')
+
+plt.show()
+
+#%%
+
+VotingResult = []
+for i in range(len(finalValidDataClassification)):
+    if( PredictedLabelSVM[i] + PredictedLabelNN[i] + PredictedLabelDecisionTree[i] < 1.5):
+        VotingResult.append(0)
+    else:
+        VotingResult.append(1)
+
+
+
+VotingResultRMSE = sqrt(mean_squared_error(validLabel, VotingResult ))
